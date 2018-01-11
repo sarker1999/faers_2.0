@@ -1,0 +1,15 @@
+[% WRAPPER wrapper.html
+    js_arr = ['https://cdn.plot.ly/plotly-latest.min.js']
+%]
+
+    <div id="myDiv"><!-- Plotly chart will be drawn inside this DIV --></div>
+    <script>  
+        var data = [{
+            x: [% pts %],
+            y: [% count_pts %],
+            type: 'bar'
+        }];
+        Plotly.newPlot('myDiv', data);
+    </script>
+
+[% END %]

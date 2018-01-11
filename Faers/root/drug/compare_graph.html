@@ -1,0 +1,50 @@
+<head>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div id="myDiv"><!-- Plotly chart will be drawn inside this DIV --></div>
+    <script>  
+        var side_effect_drug1 = [];
+        var count_drug1 = [];
+        
+
+        [% IF drug1 %]
+            [% FOREACH row IN drug1 %]
+                side_effect_drug1.push("[% row.pt %]");
+                count_drug1.push([% row.count %]);
+            [% END %]
+        [% END %]
+        var trace1 = {
+            x: side_effect_drug1,
+            y: count_drug1,
+            name: "[% drug1name %]",
+            type: 'bar'
+        };
+
+
+        var side_effect_drug2 = [];
+        var count_drug2 = [];
+        
+
+        [% IF drug2 %]
+            [% FOREACH row IN drug2 %]
+                side_effect_drug2.push("[% row.pt %]");
+                count_drug2.push([% row.count %]);
+            [% END %]
+        [% END %]
+        var trace2 = {
+            x: side_effect_drug2,
+            y: count_drug2,
+            name: "[% drug2name %]",
+            type: 'bar'
+        };
+
+        var data = [trace1, trace2];
+        console.log(data);
+        var layout = {barmode: 'group'};
+
+        Plotly.newPlot('myDiv', data, layout);
+    </script>
+</body>
+

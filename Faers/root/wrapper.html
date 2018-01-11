@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+    <title>FAERS</title>
+
+    <!--
+    link rel="stylesheet" href="/static/css/styles.css">
+    link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/sunny/jquery-ui.css" type="text/css" />
+    -->
+    [% FOR css IN css_arr %]
+    <link rel="stylesheet" href="[% css %]">
+    [% END %]
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery-form-validator/2.3.26/jquery.form-validator.min.js"></script>
+    <script src = "//code.jquery.com/ui/1.10.4/jquery-ui.js"></script> 
+    <script src="/static/js/process_autocomplete.js"></script>
+    [% FOR js IN js_arr %]
+    <script src="[% js %]"></script>
+    [% END %]
+</head>
+<body>
+    <div id="header">
+        <h1><a href= "http://localhost:3000/drug"> Let's do some drugs </a></h1>
+    </div>
+
+    <div id="content">[% content %]</div>
+
+    <div id="footer">
+    </div>
+</body>
+</html>
