@@ -2,7 +2,7 @@ $(function() {
     var cache_drug = {};
     var cache_se = {};
     var cache_iu = {};
-    $("#dname, #compare_dname").autocomplete({
+    $("#dname, #compare_dname, #compare_dname_2").autocomplete({
         minLength: 3,
         source: function(request, response) {
             predict(cache_drug, request, response, "drug_name");
@@ -58,27 +58,6 @@ $(function() {
             response(data);
         });
     }
-    /*
-    $("#df_show").datepicker({
-        dateFormat: "dd-mm-yy",
-        altFormat: "yymmdd",
-        altField: "#df",
-        yearRange: "2014:2017",
-        changeYear: true,
-        changeMonth: true,
-        defaultDate: "01-01-14"
-    });
-
-    $("#dt_show").datepicker({
-        dateFormat: "dd-mm-yy",
-        altFormat: "yymmdd",
-        altField: "#dt",
-        yearRange: "2014:2017",
-        changeYear: true,
-        changeMonth: true,
-        defaultDate: "01-01-14"
-    });
-    */
 
     $("#df_show, #dt_show").datepicker({
         dateFormat: "dd-mm-yy",

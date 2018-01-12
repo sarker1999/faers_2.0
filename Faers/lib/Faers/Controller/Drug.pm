@@ -5,6 +5,7 @@ use namespace::autoclean;
 BEGIN { extends 'Catalyst::Controller'; }
 
 use JSON;
+use Text::CSV;
 
 =head1 NAME
 
@@ -60,87 +61,197 @@ else                           { default_screen(); }
 =head2 graph
 
 =cut
+=cut
+sub graph : Local {
+    my ( $self, $c ) = @_;
+
+    my $params = $c->req->params;
+
+    my $drugname = $params->{dname} || '';
+    my $date_from = $params->{df} || 20140101;
+    my $date_to = $params->{dt} || 20171231;
+    
+    my ( $pts, $count_pts ) = generate_graph($drugname,$date_from,$date_to);
+    my @pts       = @$pts;
+    my @count_pts = @$count_pts;
+
+    $c->stash->{pts}       = objToJson( \@pts );
+    $c->stash->{count_pts} = objToJson( \@count_pts );
+    $c->stash->{template}  = 'drug/drug_graph.html';
+}
+=cut
+=head2 compare
+
+=cut
 
 sub graph : Local {
     my ( $self, $c ) = @_;
 
     my $params = $c->req->params;
 
-    $params->{df} ||= 20140101;
-    $params->{dt} ||= 20171231;
+    my $drugname = $params->{dname} || '';
+    my $date_from = $params->{df} || 20140101;
+    my $date_to = $params->{dt} || 20171231;
+    my $compare_drugname = $params->{compare_dname};
+    my $compare_dname_2 = $params->{compare_dname_2};    
 
-    my $pts_rs = $c->model('FaersDB::GraphData')->search_rs(
+    my ( $pts, $count_pts ) = generate_graph($drugname,$date_from,$date_to);
+    my ( $pts_compare, $count_pts_compare ) = generate_graph($compare_drugname,$date_from,$date_to);
+    my ( $pts2, $count_pts2 ) = generate_graph($compare_dname_2, $date_from, $date_to);
+
+    my @pts = @$pts;
+    my @count_pts = @$count_pts;
+    my @pts_compare = @$pts_compare;
+    my @count_pts_compare = @$count_pts_compare;
+    my @pts2 = @$pts2;
+    my @count_pts2 = @$count_pts2;
+
+    $c->stash->{pts}       = objToJson( \@pts );
+    $c->stash->{count_pts} = objToJson( \@count_pts );
+    $c->stash->{drugname} = $drugname;
+    $c->stash->{compare_drugname} = $compare_drugname;
+    $c->stash->{pts_compare}       = objToJson( \@pts_compare );
+    $c->stash->{count_pts_compare} = objToJson( \@count_pts_compare );
+    $c->stash->{compare_drugname_2} = $compare_dname_2;
+    $c->stash->{pts2} = objToJson( \@pts2 );
+    $c->stash->{count_pts2} = objToJson( \@count_pts2 );
+    $c->stash->{template}  = 'drug/compare_graph.html';
+    
+    
+}
+
+=head3 generate_graph
+
+=cut
+sub generate_graph {
+
+    my ($drugname, $date_from, $date_to) = @_;
+
+    my $pts_rs = Faers->model('FaersDB::GraphData')->search_rs(
         {
-            drugname_pt => { like => "$params->{dname}%" },
-            fda_dt      => { -between => [ $params->{df}, $params->{dt} ] },
+            drugname_pt => { like => "$drugname-%" },
+            fda_dt => { -between => [ $date_from, $date_to ] },
         },
         {
-            columns  => [ 'pt', { count_pt => \'count(*)' } ],
-            group_by => ['drugname_pt', 'pt'],
-            order_by => { -desc => 'count(*)' },
+            columns  => [ 'pt',          { count_pt => \'count(*)' } ],
+            group_by => [ 'drugname_pt', 'pt' ],
+            order_by => { -desc          => 'count(*)' },
             rows     => 15,
         }
     );
 
     my ( @pts, @count_pts );
     while ( my $pt_rs = $pts_rs->next ) {
-        push @pts, $pt_rs->pt;
+        push @pts,       $pt_rs->pt;
         push @count_pts, $pt_rs->count_pt;
     }
-
-    $c->stash->{pts}       = objToJson( \@pts );
-    $c->stash->{count_pts} = objToJson( \@count_pts );
-    $c->stash->{template}  = 'drug/drug_graph.html';
+    return ( \@pts, \@count_pts );
 }
 
-=head2 compare
-
+=head2 show_screen
+Args: nothing
+Return: nothing
+Displays the generated query result on screen
 =cut
 
-sub compare : Local {
+
+sub show_screen: Local {
     my ( $self, $c ) = @_;
 
-    my $params = $c->req->params;
-    $c->stash->{drugs_rs} = $c->model('FaersDB::Drug')->search_rs(
-        {
-            drugname => { -like => 'harv%' }
-        },
-        {
-            rows => 2000
-        }
-    );
+    my @display_results = generate_query_result( $c->request->params );
 
-    $c->stash->{template} = 'drug/compare.html';
+    $c->stash->{display_results} = \@display_results;
+    $c->stash->{template}        = 'drug/drug_data.html';
 }
+
+sub download : Local : Args {
+    my ( $self, $c, $type ) = @_;
+
+    my @display_results = generate_query_result( $c->request->params );
+
+    my $sep_char  = ',';
+    my $extension = 'csv';
+    if ( defined $type && $type eq 'tsv' ) {
+        $sep_char  = "\t";
+        $extension = 'tsv';
+    }
+    my $csv = Text::CSV->new( { sep_char => $sep_char } );
+    my $csv_string = '';
+    for my $display_result (@display_results) {
+        $csv->combine(
+            $display_result->drugname,
+            $display_result->val_vbm,
+            $display_result->pt,
+            $display_result->outc_cod,
+            $display_result->rpsr_cod,
+            $display_result->indi_pt,
+            $display_result->fda_dt,
+            $display_result->age,
+            $display_result->age_cod,
+            $display_result->wt,
+            $display_result->wt_cod
+        );
+        $csv_string .= $csv->string . "\n";
+    }
+
+    $c->response->content_type("text/$extension");
+    $c->response->header(
+        'Content-Disposition' => "attachment; filename=drug_data.$extension"
+    );
+    $c->response->body($csv_string);
+}
+
 =head3 generate_query_result
 Args: $result
 Return: $result
 Returns the passed has after populating it with query result
 =cut
 
-=cut
+
 sub generate_query_result {
-    my $result = shift;
-    my $valid = validate( $dname, $pt, $ind );
+	my $params = shift;
+
+#    my $result = shift;
+
+    my $drugname         = $params->{'dname'}         || '';
+my $code_num         = $params->{'cname'}         || 1;
+my $side_effect      = $params->{'pt'}            || '';
+my $outcome           = $params->{'out'}           || '';
+my $source           = $params->{'rps'}           || '';
+my $indication        = $params->{'ind'}           || '';
+ my $date_from =  $params->{df} || 20140101;
+my $date_to =    $params->{dt} || 20171231;
+my $limit           = $params->{'lim'}           || 1;
+
+my $valid = validate( $drugname, $side_effect, $indication );
     if ($valid) {
         my $sql = 'SELECT drugname, val_vbm, pt, outc_cod, rpsr_cod, indi_pt, fda_dt, age, age_cod, wt, wt_cod 
 			FROM demo JOIN drug ON demo.primaryid = drug.primaryid JOIN indi ON drug.primaryid=indi.primaryid 
 			JOIN rpsr ON indi.primaryid = rpsr.primaryid JOIN outc ON rpsr.primaryid=outc.primaryid 
 			JOIN reac on outc.primaryid=reac.primaryid WHERE drugname like ? AND val_vbm like ? AND pt LIKE ? AND 
 			outc_cod LIKE ? AND rpsr_cod LIKE ? AND indi_pt LIKE ? AND fda_dt BETWEEN ? AND ? LIMIT ?';
-        my $sth = $dbh->prepare($sql);
 
-        my $res = $sth->execute( $dname . '%', $cname, $pt . '%', $out, $rps . '%', $ind . '%', $df, $dt, $lim );
+        my $view_search_results_rs = Faers->model('FaersDB::ViewSearchResult')->search_rs(
+            {},
+            {
+                bind => [
+                    "$drugname%",    $code_num,
+                    "$side_effect%", $outcome,
+                    "$source%",      "$indication%",
+                    $date_from,      $date_to,
+                    $limit
+                ],
+            }
+        );
 
-        if ($res) {
-            my $data_result = $sth->fetchall_arrayref( {} );
-            $result->{data} = $data_result;
+        my @search_results;
+        while ( my $search_result = $view_search_results_rs->next ) {
+            push @search_results, $search_result;
         }
-        $sth->finish();
-        return $result;
+
+        return @search_results;
     }
 }
-=cut
 
 =head2 print_header
 Args: $mime (optional)
@@ -159,20 +270,7 @@ sub print_header {
 }
 =cut
 
-=head2 show_screen
-Args: nothing
-Return: nothing
-Displays the generated query result on screen
-=cut
 
-=cut
-sub show_screen {
-    my $display = { data => undef };
-    $display = generate_query_result($display);
-    print_header();
-    $tt->process( 'drug_data.html', $display );
-}
-=cut
 
 =head2 default_screen
 Args: nothing
@@ -193,9 +291,9 @@ Return: nothing
 Converts the generated query result into downloadable csv file
 =cut
 
-=cut
+=pod
 sub csv {
-    my $csv_data = { data => undef };
+   my $csv_data = { data => undef };
     $csv_data = generate_query_result($csv_data);
     print_header( "text/csv", "drug_data.csv" );
     my $data    = $csv_data->{data};
@@ -418,7 +516,7 @@ sub validate {
     }
     if ($value) {
         foreach my $fields (@fields) {
-            if ( $fields =~ m/[^a-zA-Z0-9\\\ \-\_]/ ) { $value = 0; }
+            if ( $fields =~ m/[^a-zA-Z0-9\\\ ()\-\_]/ ) { $value = 0; }
         }
     }
     return $value;

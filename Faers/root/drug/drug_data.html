@@ -9,7 +9,7 @@
       <form method="POST" id="myForm">
          <p>
             <label>Drug name:</label>
-            <input id="dname" name="dname" data-validation="alphanumeric" data-validation-allowing="-_/ "
+            <input id="dname" name="dname" data-validation="alphanumeric" data-validation-allowing="-_/ ()"
             data-validation-optional = "true">
 		 </p>
          <p>
@@ -22,7 +22,7 @@
          </p>
          <p>
             <label>Side effect:</label>
-            <input id = "se" name="pt" data-validation="alphanumeric" data-validation-allowing="-_/ "
+            <input id = "se" name="pt" data-validation="alphanumeric" data-validation-allowing="-_/ ()"
             data-validation-optional = "true">
          </p>
          <p>
@@ -55,7 +55,7 @@
          </p>
          <p>
             <label>Indication for use:</label>
-            <input id="iu" name="ind" data-validation="alphanumeric" data-validation-allowing="-_/ "
+            <input id="iu" name="ind" data-validation="alphanumeric" data-validation-allowing="-_/ ()"
             data-validation-optional="true">
          </p>
          <p>
@@ -75,16 +75,22 @@
          <p>
             <label>Name of another drug(for comparison): </label>
             <input type="text" id="compare_dname" name="compare_dname" data-validation="alphanumeric"
-            data-validation-allowing="-_/ " data-validation-optional="true">
+            data-validation-allowing="-_/ ()" data-validation-optional="true">
+         </p>
+         
+         <p class="drug_2" style="display:none;">
+            <label>Name of another drug(for comparison): </label>
+            <input type="text" id="compare_dname_2" name="compare_dname_2" data-validation="alphanumeric"
+            data-validation-allowing="-_/ ()" data-validation-optional="true" >
          </p>
          <p>
             <label>Output:</label>
             <select name="action" id = "output">
-               <option value='screen'>Screen</option>
-               <option value='csv'>CSV</option>
-               <option value='tab'>TAB</option>
+               <option value='show_screen'>Screen</option>
+               <option value='download/csv'>CSV</option>
+               <option value='download/tsv'>TAB</option>
                <option value='graph'>GRAPH</option>
-               <option value='compare'>COMPARE GRAPHS</option>
+               <!--<option value='compare'>COMPARE GRAPHS</option>-->
             </select>
          </p>
          <p>
@@ -96,7 +102,7 @@
       <div id="myOverlay" class="overlay">
       </div>
       <div id="myPacMan" class="pacman"><div class="pleaseWait">Please Wait...</div></div>
-      [% IF data %]
+      [% IF display_results %]
       <p>
       <table class="datatable" border=1 id="myData">
          <tr>
@@ -112,7 +118,7 @@
             <td>Age of Patient</td>
             <td>Age Code</td>
          </tr>
-         [% FOREACH row IN data %]
+         [% FOREACH row IN display_results %]
          <tr>
             <td>[% row.drugname %]</td>
             <td>[% row.val_vbm %]</td>
@@ -133,15 +139,27 @@
       [% BLOCK script %] 
       <script>
          $.validate();
-         function submitForm() {
-            document.getElementById('myForm').style.display = 'none';
-            [% IF data %]
-            document.getElementById('myData').style.display = 'none';
-            [% END %]
-            document.getElementById('myOverlay').style.display = 'block';
-            document.getElementById('myPacMan').style.display = 'block';
 
-            var output = $('#output').val();
+$('#compare_dname').blur(function() {
+
+if ($('#compare_dname').val().trim() !== "")
+{
+$('.drug_2').show();
+}
+});
+
+         function submitForm() {
+             var output = $('#output').val();
+
+             if (!output.match(/(csv|tsv)$/)) {
+                document.getElementById('myForm').style.display = 'none';
+                [% IF data %]
+                document.getElementById('myData').style.display = 'none';
+                [% END %]
+                document.getElementById('myOverlay').style.display = 'block';
+                document.getElementById('myPacMan').style.display = 'block';
+            }
+
             $('#myForm').attr('action', '/drug/' + output);
             return true;
          }
