@@ -10,7 +10,7 @@
          <p>
             <label>Drug name:</label>
             <input id="dname" name="dname" data-validation="alphanumeric" data-validation-allowing="-_/ ()"
-            data-validation-optional = "true">
+            data-validation-optional-if-answered="pt, ind">
 		 </p>
          <p>
             <label>Code of Drug Name:</label>
@@ -23,7 +23,7 @@
          <p>
             <label>Side effect:</label>
             <input id = "se" name="pt" data-validation="alphanumeric" data-validation-allowing="-_/ ()"
-            data-validation-optional = "true">
+            data-validation-optional-if-answered="dname, ind">
          </p>
          <p>
             <label>Outcome of patient:</label>
@@ -56,7 +56,7 @@
          <p>
             <label>Indication for use:</label>
             <input id="iu" name="ind" data-validation="alphanumeric" data-validation-allowing="-_/ ()"
-            data-validation-optional="true">
+            data-validation-optional-if-answered="dname, pt">
          </p>
          <p>
             <label>From date: </label>
@@ -70,9 +70,9 @@
          </p>
          <p>
             <label>Number of records:</label>
-            <input type="text" id="nr" name="lim" data-validation="number" data-validation-optional="true">
+            <input type="text" id="nr" name="lim" placeholder="By default 1" data-validation="number" data-validation-optional="true">
          </p>
-         <p>
+         <p class="drug_1" style="display:none;">
             <label>Name of another drug(for comparison): </label>
             <input type="text" id="compare_dname" name="compare_dname" data-validation="alphanumeric"
             data-validation-allowing="-_/ ()" data-validation-optional="true">
@@ -95,7 +95,7 @@
          </p>
          <p>
             <label></label>
-            <input type="submit" value="Request" onclick="return submitForm()">
+            <input type="submit" disabled="disabled" id = "btn-submit" value="Request" onclick="return submitForm()">
             <input type="reset">
          </p>
       </form>
@@ -138,31 +138,51 @@
       [% END %]
       [% BLOCK script %] 
       <script>
-         $.validate();
+          $.validate({
+            modules: 'logic'
+          });
 
-$('#compare_dname').blur(function() {
-
-if ($('#compare_dname').val().trim() !== "")
-{
-$('.drug_2').show();
-}
-});
-
-         function submitForm() {
-             var output = $('#output').val();
-
-             if (!output.match(/(csv|tsv)$/)) {
-                document.getElementById('myForm').style.display = 'none';
-                [% IF data %]
-                document.getElementById('myData').style.display = 'none';
-                [% END %]
-                document.getElementById('myOverlay').style.display = 'block';
-                document.getElementById('myPacMan').style.display = 'block';
+            function check_form_validity() {
+                var valid = $('#myForm').isValid(null, null, true);
+                if (valid) {
+                    $('#btn-submit').prop('disabled', false);
+                }
+                else {
+                    $('#btn-submit').prop('disabled', true);
+                }
+                return valid;
             }
 
-            $('#myForm').attr('action', '/drug/' + output);
-            return true;
-         }
+
+            $('#dname').blur(function() {
+                if ($('#dname').val().trim() !== "" && check_form_validity()) {
+                    $('.drug_1').show();
+                }
+            });
+
+            $('#compare_dname').blur(function() {
+                if ($('#compare_dname').val().trim() !== "" && check_form_validity()) {
+                    $('.drug_2').show();
+                }
+            });
+
+            $('#dname, #se, #iu, #compare_dname_2').blur(check_form_validity);
+
+            function submitForm() {
+                var output = $('#output').val();
+
+                if (!output.match(/(csv|tsv)$/)) {
+                    document.getElementById('myForm').style.display = 'none';
+                    [% IF data %]
+                    document.getElementById('myData').style.display = 'none';
+                    [% END %]
+                    document.getElementById('myOverlay').style.display = 'block';
+                    document.getElementById('myPacMan').style.display = 'block';
+                }
+
+                $('#myForm').attr('action', '/drug/' + output);
+                return true;
+            }
       </script>
       [% END %] 
       [% PROCESS script %]
